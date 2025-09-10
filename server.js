@@ -2,17 +2,26 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const hero = require("./routes/hero");
-const cartRoutes = require("./routes/cart");
-
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+
+// CORS configuration using environment variable
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "*", // set your Vercel frontend URL in .env
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
+// Request logging (optional, helpful for debugging)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // Connect to MongoDB
 mongoose
@@ -23,18 +32,23 @@ mongoose
 // Routes
 const productRoutes = require("./routes/products");
 const authRoutes = require("./routes/auth");
+const heroRoutes = require("./routes/hero");
+const cartRoutes = require("./routes/cart");
 
-app.use("/api/products", productRoutes);   // Public product routes
-app.use("/api/auth", authRoutes);           // Authentication routes
-app.use("/api/hero", require("./routes/hero"));
+app.use("/api/products", productRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/hero", heroRoutes);
 app.use("/api/cart", cartRoutes);
 
-
-
-// Optional: Example protected route
+// Protected route example
 const authMiddleware = require("./middleware/auth");
 app.get("/api/profile", authMiddleware, (req, res) => {
   res.json({ message: "This is a protected route", userId: req.user.id });
+});
+
+// Default route for base URL
+app.get("/", (req, res) => {
+  res.json({ message: "Stylenod Backend is running!" });
 });
 
 // Start server
