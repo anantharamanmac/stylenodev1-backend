@@ -17,6 +17,49 @@ router.get("/:userId", async (req, res) => {
 
   res.json(cart || { userId: req.params.userId, items: [] });
 });
+// Get cart summary for a user
+router.get("/:userId/summary", async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.params.userId }).populate("items.productId");
+
+    if (!cart) {
+      return res.json({
+        orderId: `ORD-${Date.now()}`,
+        itemsCount: 0,
+        shipping: 0,
+        tax: 0,
+        total: 0,
+        items: [],
+      });
+    }
+
+    const itemsCount = cart.items.length;
+    const subtotal = cart.items.reduce((sum, item) => {
+      return sum + item.productId.price * item.quantity;
+    }, 0);
+
+    const shipping = subtotal > 1000 ? 0 : 50; // Example rule
+    const tax = Math.round(subtotal * 0.18);   // Example 18% GST
+    const total = subtotal + shipping + tax;
+
+    res.json({
+      orderId: `ORD-${Date.now()}`,
+      itemsCount,
+      shipping,
+      tax,
+      total,
+      items: cart.items.map((i) => ({
+        name: i.productId.name,
+        price: i.productId.price,
+        quantity: i.quantity,
+      })),
+    });
+  } catch (err) {
+    console.error("Error fetching summary:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 // Add/Update item in cart
 router.post("/:userId", async (req, res) => {
