@@ -18,23 +18,35 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-// Get all products OR search products (public)
+
+// Get all products OR search/filter products (public)
 router.get("/", async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, category } = req.query;
     let query = {};
 
+    // 🔎 Search by product name
     if (search) {
-      query.name = { $regex: search, $options: "i" }; // case-insensitive search
+      query.name = { $regex: search, $options: "i" }; 
+    }
+
+    // 🏷️ Category filter (supports multiple, partial & case-insensitive)
+    if (category) {
+      // Split by comma → trim spaces → make regex for each
+      const categories = category.split(",").map(c => c.trim());
+      query.$or = categories.map(c => ({
+        category: { $regex: c, $options: "i" }
+      }));
     }
 
     const products = await Product.find(query).sort({ createdAt: -1 });
     res.json(products);
   } catch (err) {
-    console.error("Error fetching products:", err);
+    console.error("❌ Error fetching products:", err);
     res.status(500).json({ message: "Failed to fetch products" });
   }
 });
+
 
 // Get single product by ID
 router.get("/:id", async (req, res) => {
